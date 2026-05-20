@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 import pymysql
 import time
+import os
 
 app = Flask(__name__)
 CORS(app)
@@ -13,10 +14,10 @@ CORS(app)
 while True:
     try:
         db = pymysql.connect(
-            host="smartpay-mysql-rds.c3yc888c4lqk.ap-south-1.rds.amazonaws.com",
-            user="admin",
-            password="Smartpay#123",
-            database="smartpaydb",
+            host=os.getenv("MYSQL_HOST"),
+            user=os.getenv("MYSQL_USER"),
+            password=os.getenv("MYSQL_PASSWORD"),
+            database=os.getenv("MYSQL_DATABASE"),
             cursorclass=pymysql.cursors.DictCursor
         )
 

@@ -37,14 +37,11 @@ spec:
             - name: MYSQL_USER
               value: "admin"
 
+            - name: MYSQL_PASSWORD
+              value: "Smartpay123"
+
             - name: MYSQL_DATABASE
               value: "smartpaydb"
-
-            - name: MYSQL_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: mysql-secret
-                  key: MYSQL_PASSWORD
 
           readinessProbe:
             httpGet:
