@@ -19,9 +19,24 @@ spec:
 
     spec:
       containers:
-      - name: backend
+        - name: backend
 
-        image: 130128695612.dkr.ecr.ap-south-1.amazonaws.com/smartpay-app-backend:latest
+          image: 130128695612.dkr.ecr.ap-south-1.amazonaws.com/smartpay-app-backend:latest
 
-        ports:
-        - containerPort: 5000
+          imagePullPolicy: Always
+
+          ports:
+            - containerPort: 5000
+
+          env:
+            - name: MYSQL_HOST
+              value: "smartpay-mysql-rds.c3yc888c4lqk.ap-south-1.rds.amazonaws.com"
+
+            - name: MYSQL_USER
+              value: "admin"
+
+            - name: MYSQL_PASSWORD
+              value: "Smartpay#123"
+
+            - name: MYSQL_DATABASE
+              value: "smartpaydb"
