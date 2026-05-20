@@ -19,8 +19,15 @@ spec:
 
     spec:
       containers:
-      - name: frontend
+        - name: frontend
 
-        image: 130128695612.dkr.ecr.ap-south-1.amazonaws.com/smartpay-app-frontend:latest
-        ports:
-        - containerPort: 80
+          image: 130128695612.dkr.ecr.ap-south-1.amazonaws.com/smartpay-app-frontend:latest
+
+          imagePullPolicy: Always
+
+          ports:
+            - containerPort: 80
+
+          env:
+            - name: BACKEND_URL
+              value: "http://backend-service:5000"

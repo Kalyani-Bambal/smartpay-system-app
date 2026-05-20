@@ -6,11 +6,12 @@ metadata:
   namespace: smartpay
 
 spec:
+  type: LoadBalancer
+
   selector:
     app: frontend
 
   ports:
-  - port: 80
-    targetPort: 80
-
-  type: ClusterIP
+    - protocol: TCP
+      port: 80
+      targetPort: 80
