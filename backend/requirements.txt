@@ -3,3 +3,4 @@ flask-cors
 pymysql
 gunicorn
 prometheus_client
+gunicorn
