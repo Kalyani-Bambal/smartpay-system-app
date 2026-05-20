@@ -1,76 +1,121 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import pymysql
-import uuid
+import time
 
 app = Flask(__name__)
 CORS(app)
 
-# RDS MySQL connection
-db = pymysql.connect(
-    host="smartpay-mysql-rds.c3yc888c4lqk.ap-south-1.rds.amazonaws.com",
-    user="admin",
-    password="Smartpay123#",
-    database="smartpaydb"
-)
+# =========================
+# DATABASE CONNECTION
+# =========================
 
-# -----------------------------
-# CREATE TRANSACTION API
-# -----------------------------
-@app.route('/transfer', methods=['POST'])
-def transfer_money():
+while True:
+    try:
+        db = pymysql.connect(
+            host="smartpay-mysql-rds.c3yc888c4lqk.ap-south-1.rds.amazonaws.com",
+            user="admin",
+            password="Smartpay#123",
+            database="smartpaydb",
+            cursorclass=pymysql.cursors.DictCursor
+        )
+
+        print("✅ Connected to MySQL")
+
+        cursor = db.cursor()
+
+        # Auto-create table permanently
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS transactions (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            sender VARCHAR(100),
+            receiver VARCHAR(100),
+            amount DECIMAL(10,2),
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        """)
+
+        db.commit()
+
+        print("✅ transactions table ready")
+
+        break
+
+    except Exception as e:
+        print("❌ Database connection failed:", e)
+        time.sleep(5)
+
+# =========================
+# HOME ROUTE
+# =========================
+
+@app.route("/")
+def home():
+    return jsonify({
+        "message": "SmartPay Backend Running Successfully"
+    })
+
+# =========================
+# SEND MONEY API
+# =========================
+
+@app.route("/send", methods=["POST"])
+def send_money():
 
     data = request.json
 
-    sender = data['sender']
-    receiver = data['receiver']
-    amount = data['amount']
+    sender = data.get("sender")
+    receiver = data.get("receiver")
+    amount = data.get("amount")
 
-    transaction_id = str(uuid.uuid4())[:8]
+    try:
+        cursor = db.cursor()
 
-    cursor = db.cursor()
+        query = """
+        INSERT INTO transactions(sender, receiver, amount)
+        VALUES(%s, %s, %s)
+        """
 
-    query = """
-    INSERT INTO transactions
-    (transaction_id, sender_name, receiver_name, amount, status)
-    VALUES (%s, %s, %s, %s, %s)
-    """
+        cursor.execute(query, (sender, receiver, amount))
 
-    values = (
-        transaction_id,
-        sender,
-        receiver,
-        amount,
-        "SUCCESS"
-    )
+        db.commit()
 
-    cursor.execute(query, values)
+        return jsonify({
+            "message": "Transaction Successful"
+        }), 201
 
-    db.commit()
+    except Exception as e:
+        return jsonify({
+            "error": str(e)
+        }), 500
 
-    return jsonify({
-        "message": "Transaction Successful",
-        "transaction_id": transaction_id
-    })
-
-
-# -----------------------------
+# =========================
 # GET ALL TRANSACTIONS
-# -----------------------------
-@app.route('/transactions', methods=['GET'])
-def get_transactions():
+# =========================
 
-    cursor = db.cursor(pymysql.cursors.DictCursor)
+@app.route("/transactions", methods=["GET"])
+def transactions():
 
-    cursor.execute("SELECT * FROM transactions ORDER BY id DESC")
+    try:
+        cursor = db.cursor()
 
-    result = cursor.fetchall()
+        cursor.execute("""
+        SELECT * FROM transactions
+        ORDER BY id DESC
+        """)
 
-    return jsonify(result)
+        result = cursor.fetchall()
 
+        return jsonify(result)
 
-# -----------------------------
+    except Exception as e:
+        return jsonify({
+            "error": str(e)
+        }), 500
+
+# =========================
 # RUN APPLICATION
-# -----------------------------
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+# =========================
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000)
