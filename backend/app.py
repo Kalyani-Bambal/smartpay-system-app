@@ -8,53 +8,78 @@ app = Flask(__name__)
 CORS(app)
 
 # =========================
+# DATABASE CONFIG
+# =========================
+
+MYSQL_HOST = os.getenv("MYSQL_HOST")
+MYSQL_USER = os.getenv("MYSQL_USER")
+MYSQL_PASSWORD = os.getenv("MYSQL_PASSWORD")
+MYSQL_DATABASE = os.getenv("MYSQL_DATABASE")
+
+db = None
+
+# =========================
 # DATABASE CONNECTION
 # =========================
 
-while True:
-    try:
-        db = pymysql.connect(
-            host=os.getenv("MYSQL_HOST"),
-            user=os.getenv("MYSQL_USER"),
-            password=os.getenv("MYSQL_PASSWORD"),
-            database=os.getenv("MYSQL_DATABASE"),
-            cursorclass=pymysql.cursors.DictCursor
-        )
+def connect_database():
+    global db
 
-        print("✅ Connected to MySQL")
+    while True:
+        try:
+            db = pymysql.connect(
+                host=MYSQL_HOST,
+                user=MYSQL_USER,
+                password=MYSQL_PASSWORD,
+                database=MYSQL_DATABASE,
+                cursorclass=pymysql.cursors.DictCursor,
+                autocommit=True
+            )
 
-        cursor = db.cursor()
+            print("✅ Connected to MySQL")
 
-        # Auto-create table permanently
-        cursor.execute("""
-        CREATE TABLE IF NOT EXISTS transactions (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            sender VARCHAR(100),
-            receiver VARCHAR(100),
-            amount DECIMAL(10,2),
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-        """)
+            cursor = db.cursor()
 
-        db.commit()
+            cursor.execute("""
+            CREATE TABLE IF NOT EXISTS transactions (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                sender VARCHAR(100),
+                receiver VARCHAR(100),
+                amount DECIMAL(10,2),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+            """)
 
-        print("✅ transactions table ready")
+            print("✅ transactions table ready")
 
-        break
+            break
 
-    except Exception as e:
-        print("❌ Database connection failed:", e)
-        time.sleep(5)
+        except Exception as e:
+            print("❌ Database connection failed:", e)
+            time.sleep(5)
+
+# Connect on startup
+connect_database()
 
 # =========================
 # HOME ROUTE
 # =========================
 
-@app.route("/")
+@app.route("/", methods=["GET"])
 def home():
     return jsonify({
         "message": "SmartPay Backend Running Successfully"
-    })
+    }), 200
+
+# =========================
+# HEALTH CHECK
+# =========================
+
+@app.route("/health", methods=["GET"])
+def health():
+    return jsonify({
+        "status": "healthy"
+    }), 200
 
 # =========================
 # SEND MONEY API
@@ -63,13 +88,22 @@ def home():
 @app.route("/send", methods=["POST"])
 def send_money():
 
-    data = request.json
-
-    sender = data.get("sender")
-    receiver = data.get("receiver")
-    amount = data.get("amount")
+    global db
 
     try:
+        data = request.get_json()
+
+        sender = data.get("sender")
+        receiver = data.get("receiver")
+        amount = data.get("amount")
+
+        if not sender or not receiver or not amount:
+            return jsonify({
+                "error": "sender, receiver and amount are required"
+            }), 400
+
+        db.ping(reconnect=True)
+
         cursor = db.cursor()
 
         query = """
@@ -78,8 +112,6 @@ def send_money():
         """
 
         cursor.execute(query, (sender, receiver, amount))
-
-        db.commit()
 
         return jsonify({
             "message": "Transaction Successful"
@@ -97,7 +129,11 @@ def send_money():
 @app.route("/transactions", methods=["GET"])
 def transactions():
 
+    global db
+
     try:
+        db.ping(reconnect=True)
+
         cursor = db.cursor()
 
         cursor.execute("""
@@ -107,7 +143,7 @@ def transactions():
 
         result = cursor.fetchall()
 
-        return jsonify(result)
+        return jsonify(result), 200
 
     except Exception as e:
         return jsonify({
@@ -119,4 +155,10 @@ def transactions():
 # =========================
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+    print("🚀 Starting SmartPay Backend on Port 5000")
+
+    app.run(
+        host="0.0.0.0",
+        port=5000,
+        debug=False
+    )
