@@ -11,40 +11,77 @@ jobs:
 
     steps:
 
-    - name: Checkout
-      uses: actions/checkout@v4
+      # Checkout Repository
+      - name: Checkout Code
+        uses: actions/checkout@v4
 
-    - name: Configure AWS
-      uses: aws-actions/configure-aws-credentials@v4
-      with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: ap-south-1
+      # Debug Repository Structure
+      - name: Debug Files
+        run: |
+          echo "Current Directory:"
+          pwd
 
-    - name: Login ECR
-      uses: aws-actions/amazon-ecr-login@v2
+          echo "Repository Files:"
+          ls -la
 
-    - name: Build Frontend Image
-      run: |
-        docker build -t smartpay-frontend ./frontend
+          echo "Full Directory Structure:"
+          find . -type f
 
-    - name: Tag Image
-      run: |
-        docker tag smartpay-frontend:latest \
-        130128695612.dkr.ecr.ap-south-1.amazonaws.com/smartpay-frontend:latest
+      # Configure AWS Credentials
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-south-1
 
-    - name: Push Image
-      run: |
-        docker push \
-        130128695612.dkr.ecr.ap-south-1.amazonaws.com/smartpay-frontend:latest
+      # Login to Amazon ECR
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
 
-    - name: Configure Kubectl
-      run: |
-        aws eks update-kubeconfig \
-        --region ap-south-1 \
-        --name smartpay-cluster
+      # Build Docker Image
+      - name: Build Frontend Docker Image
+        run: |
+          docker build -t smartpay-frontend ./frontend
 
-    - name: Deploy to EKS
-      run: |
-        kubectl apply -f k8s/frontend-deployment.yaml
-        kubectl apply -f k8s/frontend-service.yaml
+      # Tag Docker Image
+      - name: Tag Docker Image
+        run: |
+          docker tag smartpay-frontend:latest \
+          130128695612.dkr.ecr.ap-south-1.amazonaws.com/smartpay-frontend:latest
+
+      # Push Docker Image
+      - name: Push Docker Image
+        run: |
+          docker push \
+          130128695612.dkr.ecr.ap-south-1.amazonaws.com/smartpay-frontend:latest
+
+      # Install kubectl
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: latest
+
+      # Configure kubeconfig for EKS
+      - name: Configure kubectl for EKS
+        run: |
+          aws eks update-kubeconfig \
+          --region ap-south-1 \
+          --name smartpay-cluster
+
+      # Verify Kubernetes Files
+      - name: Verify Kubernetes YAML Files
+        run: |
+          ls -la k8s
+
+      # Deploy to EKS
+      - name: Deploy Frontend to EKS
+        run: |
+          kubectl apply -f k8s/frontend-deployment.yaml
+          kubectl apply -f k8s/frontend-service.yaml
+
+      # Verify Deployment
+      - name: Verify Deployment
+        run: |
+          kubectl get pods
+          kubectl get svc
