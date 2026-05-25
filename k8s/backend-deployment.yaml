@@ -32,15 +32,27 @@ spec:
 
           env:
             - name: MYSQL_HOST
-              value: "smartpay-mysql-rds.c3yc888c4lqk.ap-south-1.rds.amazonaws.com"
+              valueFrom:
+                secretKeyRef:
+                  name: smartpay-secret
+                  key: DB_HOST
 
             - name: MYSQL_USER
-              value: "admin"
+              valueFrom:
+                secretKeyRef:
+                  name: smartpay-secret
+                  key: DB_USER
 
             - name: MYSQL_PASSWORD
-              value: "Smartpay123"
+              valueFrom:
+                secretKeyRef:
+                  name: smartpay-secret
+                  key: DB_PASSWORD
 
             - name: MYSQL_DATABASE
-              value: "smartpaydb"
+              valueFrom:
+                secretKeyRef:
+                  name: smartpay-secret
+                  key: DB_NAME
 
           
