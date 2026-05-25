@@ -21,7 +21,7 @@ spec:
       containers:
         - name: frontend
 
-          image: 130128695612.dkr.ecr.ap-south-1.amazonaws.com/smartpay-app-frontend:latest
+          image: 130128695612.dkr.ecr.ap-south-1.amazonaws.com/smartpay-frontend:latest
 
           imagePullPolicy: Always
 
