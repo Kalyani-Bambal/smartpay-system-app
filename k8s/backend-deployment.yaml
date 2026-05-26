@@ -32,27 +32,15 @@ spec:
 
           env:
             - name: MYSQL_HOST
-              valueFrom:
-                secretKeyRef:
-                  name: smartpay-secret
-                  key: DB_HOST
+              value: mysql.smartpay.svc.cluster.local
 
             - name: MYSQL_USER
-              valueFrom:
-                secretKeyRef:
-                  name: smartpay-secret
-                  key: DB_USER
+              value: root
 
             - name: MYSQL_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: smartpay-secret
-                  key: DB_PASSWORD
+              value: root123
 
             - name: MYSQL_DATABASE
-              valueFrom:
-                secretKeyRef:
-                  name: smartpay-secret
-                  key: DB_NAME
+              value: smartpaydb
 
           
