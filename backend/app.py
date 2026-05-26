@@ -1,4 +1,3 @@
-
 from flask import Flask, request, jsonify, Response
 from flask_cors import CORS
 import pymysql
@@ -132,6 +131,12 @@ def create_table():
     """)
 
     print("✅ transactions table ready")
+
+# =========================
+# CONNECT DATABASE ON STARTUP
+# =========================
+
+connect_database()
 
 # =========================
 # HOME ROUTE
@@ -296,11 +301,8 @@ if __name__ == "__main__":
 
     print("🚀 Starting SmartPay Backend on Port 5000")
 
-    connect_database()
-
     app.run(
         host="0.0.0.0",
         port=5000,
         debug=False
     )
-

@@ -55,3 +55,9 @@ spec:
                 secretKeyRef:
                   name: smartpay-secret
                   key: DB_NAME
+
+            - name: ENV
+              valueFrom:
+                configMapKeyRef:
+                  name: smartpay-config
+                  key: ENV      
