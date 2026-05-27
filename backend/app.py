@@ -1,8 +1,12 @@
 from flask import Flask, request, jsonify, Response
 from flask_cors import CORS
+
 import pymysql
 import os
 import time
+import bcrypt
+import jwt
+import datetime
 
 from prometheus_client import (
     Counter,
@@ -17,7 +21,14 @@ from prometheus_client import (
 # =========================
 
 app = Flask(__name__)
+
 CORS(app)
+
+# =========================
+# JWT CONFIG
+# =========================
+
+SECRET_KEY = "smartpay-secret-key"
 
 # =========================
 # PROMETHEUS METRICS
@@ -77,7 +88,9 @@ def connect_database():
 
             print("Attempting MySQL Connection...")
 
-            db_connection_attempts.labels(status='attempt').inc()
+            db_connection_attempts.labels(
+                status='attempt'
+            ).inc()
 
             db = pymysql.connect(
                 host=MYSQL_HOST,
@@ -91,11 +104,13 @@ def connect_database():
 
             active_connections.set(1)
 
-            db_connection_attempts.labels(status='success').inc()
+            db_connection_attempts.labels(
+                status='success'
+            ).inc()
 
-            print("✅ Connected to MySQL Successfully")
+            print("Connected to MySQL Successfully")
 
-            create_table()
+            create_tables()
 
             break
 
@@ -103,21 +118,34 @@ def connect_database():
 
             active_connections.set(0)
 
-            db_connection_attempts.labels(status='failed').inc()
+            db_connection_attempts.labels(
+                status='failed'
+            ).inc()
 
-            print(f"❌ Database Connection Failed: {e}")
+            print(f"Database Connection Failed: {e}")
 
             time.sleep(5)
 
 # =========================
-# CREATE TABLE
+# CREATE TABLES
 # =========================
 
-def create_table():
+def create_tables():
 
     global db
 
     cursor = db.cursor()
+
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS users (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        username VARCHAR(100),
+        email VARCHAR(255) UNIQUE,
+        password_hash TEXT,
+        wallet_balance DECIMAL(10,2) DEFAULT 10000,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
 
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS transactions (
@@ -130,13 +158,32 @@ def create_table():
     )
     """)
 
-    print("✅ transactions table ready")
+    print("Database tables ready")
 
 # =========================
-# CONNECT DATABASE ON STARTUP
+# CONNECT DATABASE
 # =========================
 
 connect_database()
+
+# =========================
+# JWT TOKEN
+# =========================
+
+def generate_token(user_id):
+
+    payload = {
+        "user_id": user_id,
+        "exp": datetime.datetime.utcnow() + datetime.timedelta(hours=24)
+    }
+
+    token = jwt.encode(
+        payload,
+        SECRET_KEY,
+        algorithm="HS256"
+    )
+
+    return token
 
 # =========================
 # HOME ROUTE
@@ -161,6 +208,113 @@ def health():
     }), 200
 
 # =========================
+# REGISTER USER
+# =========================
+
+@app.route("/register", methods=["POST"])
+def register():
+
+    global db
+
+    try:
+
+        data = request.get_json()
+
+        username = data.get("username")
+        email = data.get("email")
+        password = data.get("password")
+
+        hashed = bcrypt.hashpw(
+            password.encode("utf-8"),
+            bcrypt.gensalt()
+        )
+
+        cursor = db.cursor()
+
+        query = """
+        INSERT INTO users (
+            username,
+            email,
+            password_hash
+        )
+        VALUES (%s,%s,%s)
+        """
+
+        cursor.execute(
+            query,
+            (
+                username,
+                email,
+                hashed.decode()
+            )
+        )
+
+        return jsonify({
+            "message": "User Registered Successfully"
+        }), 201
+
+    except Exception as e:
+
+        return jsonify({
+            "error": str(e)
+        }), 500
+
+# =========================
+# LOGIN USER
+# =========================
+
+@app.route("/login", methods=["POST"])
+def login():
+
+    global db
+
+    try:
+
+        data = request.get_json()
+
+        email = data.get("email")
+        password = data.get("password")
+
+        cursor = db.cursor()
+
+        cursor.execute(
+            "SELECT * FROM users WHERE email=%s",
+            (email,)
+        )
+
+        user = cursor.fetchone()
+
+        if not user:
+
+            return jsonify({
+                "error": "User not found"
+            }), 404
+
+        valid = bcrypt.checkpw(
+            password.encode("utf-8"),
+            user["password_hash"].encode("utf-8")
+        )
+
+        if not valid:
+
+            return jsonify({
+                "error": "Invalid password"
+            }), 401
+
+        token = generate_token(user["id"])
+
+        return jsonify({
+            "token": token,
+            "username": user["username"]
+        })
+
+    except Exception as e:
+
+        return jsonify({
+            "error": str(e)
+        }), 500
+
+# =========================
 # SEND MONEY API
 # =========================
 
@@ -175,21 +329,18 @@ def send_money():
 
         data = request.get_json()
 
-        if not data:
-            return jsonify({
-                "error": "Invalid JSON body"
-            }), 400
-
         sender = data.get("sender")
         receiver = data.get("receiver")
         amount = data.get("amount")
 
         if not sender or not receiver or not amount:
 
-            transactions_total.labels(status='failed').inc()
+            transactions_total.labels(
+                status='failed'
+            ).inc()
 
             return jsonify({
-                "error": "sender, receiver and amount are required"
+                "error": "sender, receiver and amount required"
             }), 400
 
         db.ping(reconnect=True)
@@ -203,7 +354,7 @@ def send_money():
             amount,
             status
         )
-        VALUES (%s, %s, %s, %s)
+        VALUES (%s,%s,%s,%s)
         """
 
         cursor.execute(
@@ -218,15 +369,17 @@ def send_money():
 
         transaction_id = cursor.lastrowid
 
-        transactions_total.labels(status='success').inc()
+        transactions_total.labels(
+            status='success'
+        ).inc()
 
-        transaction_amount.labels(status='success').inc(float(amount))
+        transaction_amount.labels(
+            status='success'
+        ).inc(float(amount))
 
         db_query_duration.labels(
             operation='insert'
         ).observe(time.time() - start_time)
-
-        print(f"✅ Transaction Success: {transaction_id}")
 
         return jsonify({
             "message": "Transaction Successful",
@@ -235,9 +388,9 @@ def send_money():
 
     except Exception as e:
 
-        transactions_total.labels(status='failed').inc()
-
-        print(f"❌ Transaction Failed: {e}")
+        transactions_total.labels(
+            status='failed'
+        ).inc()
 
         return jsonify({
             "error": str(e)
@@ -252,8 +405,6 @@ def get_transactions():
 
     global db
 
-    start_time = time.time()
-
     try:
 
         db.ping(reconnect=True)
@@ -267,22 +418,50 @@ def get_transactions():
 
         result = cursor.fetchall()
 
-        db_query_duration.labels(
-            operation='select'
-        ).observe(time.time() - start_time)
-
         return jsonify(result), 200
 
     except Exception as e:
-
-        print(f"❌ Fetch Failed: {e}")
 
         return jsonify({
             "error": str(e)
         }), 500
 
 # =========================
-# PROMETHEUS METRICS
+# ADMIN APIs
+# =========================
+
+@app.route("/admin/transactions", methods=["GET"])
+def admin_transactions():
+
+    global db
+
+    cursor = db.cursor()
+
+    cursor.execute(
+        "SELECT * FROM transactions"
+    )
+
+    result = cursor.fetchall()
+
+    return jsonify(result)
+
+@app.route("/admin/users", methods=["GET"])
+def admin_users():
+
+    global db
+
+    cursor = db.cursor()
+
+    cursor.execute(
+        "SELECT * FROM users"
+    )
+
+    result = cursor.fetchall()
+
+    return jsonify(result)
+
+# =========================
+# METRICS
 # =========================
 
 @app.route("/metrics", methods=["GET"])
@@ -299,7 +478,7 @@ def metrics():
 
 if __name__ == "__main__":
 
-    print("🚀 Starting SmartPay Backend on Port 5000")
+    print("Starting SmartPay Backend on Port 5000")
 
     app.run(
         host="0.0.0.0",
