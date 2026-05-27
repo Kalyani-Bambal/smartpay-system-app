@@ -1,6 +1,9 @@
 flask
+gunicorn
+mysql-connector-python
+pyjwt
+bcrypt
 flask-cors
-pymysql
-gunicorn
-prometheus_client
-gunicorn
+prometheus-client
+reportlab
+boto3
