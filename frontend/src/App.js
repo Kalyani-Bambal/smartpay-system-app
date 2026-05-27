@@ -1,96 +1,60 @@
-import axios from "axios";
-import { useEffect, useState } from "react";
+import React from "react";
+
+import {
+  BrowserRouter,
+  Routes,
+  Route
+} from "react-router-dom";
+
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import Dashboard from "./pages/Dashboard";
+import SendMoney from "./pages/SendMoney";
+import Transactions from "./pages/Transactions";
+import AdminDashboard from "./pages/AdminDashboard";
 
 function App() {
 
-  const [sender, setSender] = useState("");
-  const [receiver, setReceiver] = useState("");
-  const [amount, setAmount] = useState("");
-
-  const [transactions, setTransactions] = useState([]);
-
-  const sendMoney = async () => {
-
-    await axios.post("/api/send", {
-      sender,
-      receiver,
-      amount
-    });
-
-    alert("Payment Successful");
-
-    getTransactions();
-  };
-
-  const getTransactions = async () => {
-
-    const response = await axios.get("/api/transactions");
-
-    setTransactions(response.data);
-  };
-
-  useEffect(() => {
-    getTransactions();
-  }, []);
-
   return (
-    <div style={{padding:"40px"}}>
 
-      <h1>SmartPay System</h1>
+    <BrowserRouter>
 
-      <input
-        placeholder="Sender"
-        onChange={(e)=>setSender(e.target.value)}
-      />
+      <Routes>
 
-      <br /><br />
+        <Route
+          path="/"
+          element={<Login />}
+        />
 
-      <input
-        placeholder="Receiver"
-        onChange={(e)=>setReceiver(e.target.value)}
-      />
+        <Route
+          path="/register"
+          element={<Register />}
+        />
 
-      <br /><br />
+        <Route
+          path="/dashboard"
+          element={<Dashboard />}
+        />
 
-      <input
-        placeholder="Amount"
-        onChange={(e)=>setAmount(e.target.value)}
-      />
+        <Route
+          path="/send"
+          element={<SendMoney />}
+        />
 
-      <br /><br />
+        <Route
+          path="/transactions"
+          element={<Transactions />}
+        />
 
-      <button onClick={sendMoney}>
-        Send Money
-      </button>
+        <Route
+          path="/admin"
+          element={<AdminDashboard />}
+        />
 
-      <hr />
+      </Routes>
 
-      <h2>Transactions</h2>
+    </BrowserRouter>
 
-      {
-        transactions.map((txn) => (
-
-          <div key={txn.id}>
-
-            <p>
-              <b>{txn.sender_name}</b>
-              {" -> "}
-              <b>{txn.receiver_name}</b>
-            </p>
-
-            <p>Amount: ₹{txn.amount}</p>
-
-            <p>Status: {txn.status}</p>
-
-            <p>Transaction ID: {txn.transaction_id}</p>
-
-            <hr />
-
-          </div>
-        ))
-      }
-
-    </div>
   );
 }
 
