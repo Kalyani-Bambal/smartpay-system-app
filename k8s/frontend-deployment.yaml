@@ -21,11 +21,37 @@ spec:
       containers:
         - name: frontend
 
-          image: 130128695612.dkr.ecr.ap-south-1.amazonaws.com/smartpay-frontend:latest
+          image: 677078406480.dkr.ecr.ap-south-1.amazonaws.com/smartpay-frontend:latest
 
           imagePullPolicy: Always
 
           ports:
             - containerPort: 80
 
-          
+          env:
+            - name: REACT_APP_API_URL
+              value: "http://localhost:5001"
+            - name: NODE_ENV
+              value: "production"
+
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 30
+            periodSeconds: 10
+
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 10
+            periodSeconds: 5
+
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "500m"

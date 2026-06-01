@@ -6,7 +6,7 @@ metadata:
   namespace: smartpay
 
 spec:
-  type: ClusterIP
+  type: LoadBalancer
 
   selector:
     app: backend
