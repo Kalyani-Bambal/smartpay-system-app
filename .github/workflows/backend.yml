@@ -10,41 +10,49 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
-    - name: Checkout
-      uses: actions/checkout@v4
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-south-1
 
-    - name: Configure AWS
-      uses: aws-actions/configure-aws-credentials@v4
-      with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: ap-south-1
+      - name: Verify AWS Account
+        run: |
+          aws sts get-caller-identity
 
-    - name: Login ECR
-      uses: aws-actions/amazon-ecr-login@v2
+      - name: Login to Amazon ECR
+        run: |
+          aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin 677078406480.dkr.ecr.ap-south-1.amazonaws.com
 
-    - name: Build Backend Image
-      run: |
-        docker build -t smartpay-backend ./backend
+      - name: Build Backend Image
+        run: |
+          docker build -t smartpay-backend ./backend
 
-    - name: Tag Image
-      run: |
-        docker tag smartpay-backend:latest \
-        677078406480.dkr.ecr.ap-south-1.amazonaws.com/smartpay-backend:latest
+      - name: Tag Backend Image
+        run: |
+          docker tag smartpay-backend:latest 677078406480.dkr.ecr.ap-south-1.amazonaws.com/smartpay-backend:latest
 
-    - name: Push Image
-      run: |
-        docker push \
-        677078406480.dkr.ecr.ap-south-1.amazonaws.com/smartpay-backend:latest
+      - name: Push Backend Image
+        run: |
+          docker push 677078406480.dkr.ecr.ap-south-1.amazonaws.com/smartpay-backend:latest
 
-    - name: Configure Kubectl
-      run: |
-        aws eks update-kubeconfig \
-        --region ap-south-1 \
-        --name smartpay-cluster
+      - name: Configure kubectl
+        run: |
+          aws eks update-kubeconfig \
+            --region ap-south-1 \
+            --name smartpay-cluster
 
-    - name: Deploy to EKS
-      run: |
-        kubectl apply -f k8s/backend-deployment.yaml
-        kubectl apply -f k8s/backend-service.yaml
+      - name: Deploy Backend to EKS
+        run: |
+          kubectl apply -f k8s/backend-deployment.yaml
+          kubectl apply -f k8s/backend-service.yaml
+
+      - name: Check Deployment Status
+        run: |
+          kubectl get pods -A
+          kubectl get svc -A
+          kubectl get deployment -A
