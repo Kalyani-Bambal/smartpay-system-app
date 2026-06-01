@@ -48,13 +48,13 @@ jobs:
       - name: Tag Docker Image
         run: |
           docker tag smartpay-frontend:latest \
-          130128695612.dkr.ecr.ap-south-1.amazonaws.com/smartpay-frontend:latest
+          677078406480.dkr.ecr.ap-south-1.amazonaws.com/smartpay-frontend:latest
 
       # Push Docker Image
       - name: Push Docker Image
         run: |
           docker push \
-          130128695612.dkr.ecr.ap-south-1.amazonaws.com/smartpay-frontend:latest
+          677078406480.dkr.ecr.ap-south-1.amazonaws.com/smartpay-frontend:latest
 
       # Install kubectl
       - name: Install kubectl
