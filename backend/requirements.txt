@@ -1,6 +1,7 @@
 flask
 gunicorn
 mysql-connector-python
+pymysql
 pyjwt
 bcrypt
 flask-cors
