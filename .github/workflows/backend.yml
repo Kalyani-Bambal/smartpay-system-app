@@ -31,12 +31,12 @@ jobs:
     - name: Tag Image
       run: |
         docker tag smartpay-backend:latest \
-        130128695612.dkr.ecr.ap-south-1.amazonaws.com/smartpay-backend:latest
+        677078406480.dkr.ecr.ap-south-1.amazonaws.com/smartpay-backend:latest
 
     - name: Push Image
       run: |
         docker push \
-        130128695612.dkr.ecr.ap-south-1.amazonaws.com/smartpay-backend:latest
+        677078406480.dkr.ecr.ap-south-1.amazonaws.com/smartpay-backend:latest
 
     - name: Configure Kubectl
       run: |
